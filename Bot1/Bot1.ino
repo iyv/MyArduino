@@ -32,7 +32,7 @@ void loop() {
     Serial.println(inChar);
     if (inChar=='h'){
       Serial1.println("Добро пожаловать в программу управления Bot 1.0");
-      Serial1.println("       (C) IYV 2012 (19.12.2012г.)");  
+      Serial1.println("       (C) IYV 2013 (01.10.2013г.)");  
       Serial1.println("-------------------------------------------------");
       Serial1.println("a - движение вперед        s-движение назад ");
       Serial1.println("z - поворот налево         x-поворот направо ");
