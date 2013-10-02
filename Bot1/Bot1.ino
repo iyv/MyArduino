@@ -140,7 +140,7 @@ void AutoPilot(){
     analogWrite(E2,127+SpeedAP);
     }
   else{
-    Serial1.println("Найдена препятствие");
+    Serial1.println("Найдено препятствие");
     while (dist < 40.0){
       if (Serial1.available()) {
         char inChar =Serial1.read();
