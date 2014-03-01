@@ -30,6 +30,7 @@ void loop() {
     char inChar =Serial1.read();
     
     Serial.println(inChar);
+    //menu
     if (inChar=='h'){
       Serial1.println("Добро пожаловать в программу управления Bot 1.0");
       Serial1.println("       (C) IYV 2013 (01.10.2013г.)");  
