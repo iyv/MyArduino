@@ -1,6 +1,9 @@
+// I assume you know how to connect the DS1302 and LCD.
+// DS1302:  CE pin    -> Arduino Digital 2
+//          I/O pin   -> Arduino Digital 3
+//          SCLK pin  -> Arduino Digital 4
+
 #include <OneWire.h>
-#include <stdio.h>
-#include <string.h>
 #include <DS1302.h>
 #include <LiquidCrystal.h>
 #include <dht.h>
@@ -23,7 +26,7 @@ DS1302 rtc(CE_PIN, IO_PIN, SCLK_PIN);
 // создаём объект-сенсор
 DHT sensor = DHT();
 
-byte i;
+byte m;
 byte data[12];
 byte type_s;
 byte addr[8];
@@ -152,17 +155,18 @@ void printDHT11()
 
 void print_DateTime()
 {
-  /* Get the current time and date from the chip */
-  Time t = rtc.time();
-  lcd.setCursor(3, 0);
-  /* Format the time and date and insert into the temporary buffer */
-  snprintf(buf, sizeof(buf), "%02d-%02d-%04d",
-           t.date, t.mon, t.yr);
-  lcd.print(buf);
+  // Display time centered on the upper line
+  lcd.setCursor(4, 0);
+  lcd.print(rtc.getTimeStr());
   
-  lcd.setCursor(4, 1);
-  snprintf(buf, sizeof(buf), "%02d:%02d:%02d",
-           t.hr, t.min, t.sec);
-  lcd.print(buf);
+  // Display abbreviated Day-of-Week in the lower left corner
+  lcd.setCursor(0, 1);
+  lcd.print(rtc.getDOWStr(FORMAT_SHORT));
   
+  // Display date in the lower right corner
+  lcd.setCursor(6, 1);
+  lcd.print(rtc.getDateStr());
+
+  // Wait one second before repeating :)
+  //delay (1000);
 }
