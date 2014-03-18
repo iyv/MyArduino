@@ -28,12 +28,12 @@ DS1302 rtc(11, 10, 9); // Create a DS1302 object
 //char buf[50];
 //char day[10];
 int i = 1;
-
+int rez;
 
 // создаём объект-сенсор
 DHT sensor = DHT();
 
-byte NMenu = 0; //переменная для хранения пункта меню
+char NMenu = '0'; //переменная для хранения пункта меню
 int RW = 7;//вывод разрещения записи в дисплей
 byte m = 0;//простой счетчик
 byte data[12];//массив данных с датчика ds18b20
@@ -53,6 +53,8 @@ void setup(void)
   sensor.attach(A0); 
 
   lcd.clear();
+  
+  
   for (i=0; i<16; i++) {
       lcd.setCursor(i, 0);
       lcd.print(char(255));
@@ -63,22 +65,27 @@ void setup(void)
   /*
   rtc.writeProtect(false);
   rtc.halt(false);
-  rtc.setDOW(7);        // Set Day-of-Week to FRIDAY
-  rtc.setTime(16, 8, 0);     // Set the time to 12:00:00 (24hr format)
-  rtc.setDate(3, 9, 2014);   // Set the date to August 6th, 2010
+  rtc.setDOW(2);        // Set Day-of-Week to FRIDAY
+  rtc.setTime(16, 0, 0);     // Set the time to 12:00:00 (24hr format)
+  rtc.setDate(18, 3, 2014);   // Set the date to August 6th, 2010
   rtc.writeProtect(true);
   rtc.halt(true);
   */
- /* 
+  
   lcd.clear();
-  for (i=1; i<256; i++) {
-    lcd.setCursor(1,0);
-    lcd.print (i);
-    lcd.setCursor(5,1);
-    lcd.print(char(i));
-    delay(200);
-    };
-  */
+  for (int ii=0; ii<25; ii++){
+    lcd.setCursor(0,0);
+    lcd.print (ii);
+    for (int jj=1; jj<11; jj++) {
+      lcd.setCursor(jj+4,0);
+      lcd.print (jj);
+      lcd.setCursor(jj+4,1);
+      rez=ii*10+jj;
+      if (rez<256) lcd.print(char(rez));
+      };
+    delay(1000);
+  };
+  
   Serial.begin(57600);
 }
 
@@ -95,13 +102,19 @@ void loop(void)
         for( i = 0; i < 8; i++) {
           addr[i] = addr1[i];
         }
-        printDS18B20();
+        printDS18B20(1);
      break;
       case '2':
         for( i = 0; i < 8; i++) {
           addr[i] = addr2[i];
         }
-        printDS18B20();
+        printDS18B20(1);
+     break;
+     case '0':
+        NMenu = Serial.read();
+        lcd.clear();
+        print_Menu();
+        delay(1000);
      break;
     }
   }
@@ -110,26 +123,28 @@ void loop(void)
   m = m + 1;
   if (m == 3) {
     printDHT11();
-    }
+    };
   if (m == 6) {
-    printDS18B20();
+    printDS18B20(0);
     m=1;
     delay(1000);
-    }  
+    };  
 }  
 
 //--------------------------------------------------------------
-void printDS18B20()
+void printDS18B20(byte poisk)
 {  
   lcd.clear();
   lcd.setCursor(0,0);
-  if ( !ds.search(addr)) {
-    //lcd.println("No more addresses.");
-    //Serial.println();
-    ds.reset_search();
-    delay(250);
-    return;
-  }
+  if (poisk == 1){
+    if ( !ds.search(addr)) {
+      //lcd.println("No more addresses.");
+      //Serial.println();
+      ds.reset_search();
+      delay(250);
+      return;
+    }
+}
   
   if ( OneWire::crc8( addr, 7) != addr[7]) {
         lcd.print("CRC is not valid!\n");
@@ -163,10 +178,17 @@ void printDS18B20()
     //// default is 12 bit resolution, 750 ms conversion time
   }
   celsius = (float)raw / 16.0;
-  lcd.setCursor(0, 0);
-  lcd.print("Temp= ");
-  lcd.print(celsius);
-  lcd.print("C");
+  if (poisk == 1){
+    Serial.print("Temp= ");
+    Serial.print(celsius);
+    Serial.println(" C");
+    }
+  else {
+    lcd.setCursor(0, 0);
+    lcd.print("Temp= ");
+    lcd.print(celsius);
+    lcd.print("C");
+    };
 }
 
 //--------------------------------------------------------------
@@ -189,16 +211,28 @@ void printDHT11()
       lcd.print(msg);       
       break;
     case DHT_ERROR_START_FAILED_1:
-      lcd.print("Error: start failed (stage 1)");
+      lcd.setCursor(2, 0); 
+      lcd.print("Error: start");
+      lcd.setCursor(0, 1); 
+      lcd.print("failed (stage1)");
       break;
     case DHT_ERROR_START_FAILED_2:
-      lcd.print("Error: start failed (stage 2)");
+      lcd.setCursor(2, 0);
+      lcd.print("Error: start");
+      lcd.setCursor(0, 1);
+      lcd.print("failed (stage 2)");
       break;
     case DHT_ERROR_READ_TIMEOUT:
-      lcd.print("Error: read timeout");
+      lcd.setCursor(5, 0);
+      lcd.print("Error:");
+      lcd.setCursor(2, 1);
+      lcd.print("read timeout");
       break;
     case DHT_ERROR_CHECKSUM_FAILURE:
-      lcd.print("Error: checksum error");
+      lcd.setCursor(5, 0);
+      lcd.print("Error:");
+      lcd.setCursor(1, 1);
+      lcd.print("checksum error");
       break;
     }
   delay(5000);
@@ -230,11 +264,11 @@ void print_Menu()
 {
   switch (NMenu)
   {
-    case 1:
+    case '1':
       lcd.setCursor(0, 0);
       lcd.print ("<   Set TIME   >");
       break;
-    case 2:
+    case '2':
       lcd.setCursor(0, 0);
       lcd.print ("     Set HH");
       lcd.setCursor(0, 1);
@@ -244,7 +278,7 @@ void print_Menu()
       lcd.setCursor(15, 1);
       lcd.print (">");
       break;
-    case 3:
+    case '3':
       lcd.setCursor(0, 0);
       lcd.print ("     Set MM");
       lcd.setCursor(0, 1);
@@ -254,7 +288,7 @@ void print_Menu()
       lcd.setCursor(15, 1);
       lcd.print (">");
       break;
-    case 4:
+    case '4':
       lcd.setCursor(0, 0);
       lcd.print ("     Set SS");
       lcd.setCursor(0, 1);
