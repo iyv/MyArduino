@@ -54,7 +54,6 @@ void setup(void)
 
   lcd.clear();
   
-  
   for (i=0; i<16; i++) {
       lcd.setCursor(i, 0);
       lcd.print(char(255));
@@ -65,11 +64,11 @@ void setup(void)
   /*
   rtc.writeProtect(false);
   rtc.halt(false);
-  rtc.setDOW(2);        // Set Day-of-Week to FRIDAY
-  rtc.setTime(16, 0, 0);     // Set the time to 12:00:00 (24hr format)
-  rtc.setDate(18, 3, 2014);   // Set the date to August 6th, 2010
+  rtc.setDOW(2);        // Set Day-of-Week to Вторник
+  rtc.setTime(9, 11, 0);     // Set the time to 09:11:00 (24hr format)
+  rtc.setDate(25, 3, 2014);   // Set the date to 25 марта 2014
   rtc.writeProtect(true);
-  rtc.halt(true);
+  //rtc.halt(true);
   */
   
   lcd.clear();
@@ -136,9 +135,9 @@ void printDS18B20(byte poisk)
 {  
   lcd.clear();
   lcd.setCursor(0,0);
-  if (poisk == 1){
+  if (poisk == 0){
     if ( !ds.search(addr)) {
-      //lcd.println("No more addresses.");
+      lcd.println("No more addresses.");
       //Serial.println();
       ds.reset_search();
       delay(250);
@@ -178,16 +177,14 @@ void printDS18B20(byte poisk)
     //// default is 12 bit resolution, 750 ms conversion time
   }
   celsius = (float)raw / 16.0;
-  if (poisk == 1){
-    Serial.print("Temp= ");
-    Serial.print(celsius);
-    Serial.println(" C");
-    }
-  else {
+  if (poisk == 0){
     lcd.setCursor(0, 0);
     lcd.print("Temp= ");
     lcd.print(celsius);
     lcd.print("C");
+    }
+  else {
+    Serial.println(celsius);
     };
 }
 
@@ -259,7 +256,7 @@ void print_DateTime()
   // Wait one second before repeating :)
   delay (1000);
 }
-
+//--------------------------------------------------------------
 void print_Menu()
 {
   switch (NMenu)
