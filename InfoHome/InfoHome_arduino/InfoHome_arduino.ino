@@ -65,13 +65,14 @@ void setup(void)
   rtc.writeProtect(false);
   rtc.halt(false);
   rtc.setDOW(2);        // Set Day-of-Week to Вторник
-  rtc.setTime(9, 11, 0);     // Set the time to 09:11:00 (24hr format)
-  rtc.setDate(25, 3, 2014);   // Set the date to 25 марта 2014
+  rtc.setTime(15, 8, 0);     // Set the time to 09:11:00 (24hr format)
+  rtc.setDate(31, 8, 2014);   // Set the date to 25 марта 2014
   rtc.writeProtect(true);
   //rtc.halt(true);
   */
   
-  lcd.clear();
+ /* 
+ lcd.clear();
   for (int ii=0; ii<25; ii++){
     lcd.setCursor(0,0);
     lcd.print (ii);
@@ -84,6 +85,7 @@ void setup(void)
       };
     delay(1000);
   };
+  */
   
   Serial.begin(57600);
 }
