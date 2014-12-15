@@ -1,3 +1,18 @@
+/*
+Ivanov Y.V. Home Control
+
+2014-12-11 -выбор команд
+*/
+
+/*
+Команды для управления:
+d - запрос данных с датчика ds18b20 (d0000000000000000)
+t - данные даты и времени для текущей установки(t0000000000000)
+u - запрос адресов подключенных датчиков ds18b20 (опрос датчиков)
+e - вывод текста на экран (нижняя строка 16 символов)
+h - запрос данных по датчику DHT11 (температура, влажность)
+*/
+
 #include <stdio.h>
 #include <string.h>
 #include <DS1302.h>
@@ -10,9 +25,10 @@ uint8_t IO_PIN   = 4;
 uint8_t SCLK_PIN = 5;
 
 /* Переменные буферные */
-char buf[50]; //
-char day[10]; //
-int ArrayDateTime[7]; //
+//char buf[50]; //
+//char day[10]; //
+int ArrayDateTime[7]={1,2,3,4,5,6,2014}; //
+char temp[50];
 
 //адреса датчиков по умолчанию
 byte addr1[8]= {0x28, 0x3C, 0x5B, 0x47, 0x02, 0x00, 0x00, 0x42}; //первый датчик ds18b20
@@ -35,29 +51,28 @@ void setup() {
   delay(1000);
 }
 
+void install_Date (int TD[7])
+{
+  //по умолчанию инициализируется 
+  //понедельник, 02:03:04, 05.06.2014
+  rtc.writeProtect(false);
+  rtc.halt(false);
+  rtc.setDOW(TD[0]);
+  rtc.setTime(TD[1], TD[2], TD[3]);
+  rtc.setDate(TD[4], TD[5], TD[6]);
+  rtc.writeProtect(true);  
+}
+
 void loop() {
   // put your main code here, to run repeatedly: 
-  lcd.clear();
-  /*print_DS1302();
-  delay(1000);
-  i = i + 1;
-  if (i == 5) {
-    print_DHT();
-    } 
-  */  
+  lcd.clear(); 
   if (Serial.available() > 0)  
   {  
     char inByte = Serial.read();  
     switch (inByte)
     {
-      case 'z'://запрос данных датчика
-        byte i=0;
-        while (Serial.available()>0)
-          {
-            ar[i]=Serial.read();
-            i++;
-          };
-        install_Date(ar); 
+      case 'd'://запрос данных датчика
+ 
         break;
       case 'u'://обновить список датчиков ds18b20
       
@@ -65,20 +80,32 @@ void loop() {
       case 'e'://выполнить действие
       
       break;
-      case 's'://установка даты и времени
-      //
+      case 't'://установка даты и времени
+        byte i=0;
+        while (Serial.available()>0)
+          {
+            temp[i]=Serial.read();
+            i++;
+          };
+        ArrayDateTime[0]=conv_to_int('0',temp[0]);
+        ArrayDateTime[1]=conv_to_int(temp[1],temp[2]);
+        ArrayDateTime[2]=conv_to_int(temp[3],temp[4]);
+        ArrayDateTime[3]=conv_to_int(temp[5],temp[6]);
+        ArrayDateTime[4]=conv_to_int(temp[7],temp[8]);
+        ArrayDateTime[5]=conv_to_int(temp[9],temp[10]);
+        ArrayDateTime[6]=2000+conv_to_int(temp[11],temp[12]);
+        install_Date(ArrayDateTime);
+        lcd.setCursor(1, 0);              
+        lcd.print('  Time correct  ');
       break;
     }
+  }
 }
 
-void install_Date(int TD[7]=[2,1,1,1,1,1,2014])
-{
-  rtc.writeProtect(false);
-  rtc.halt(false);
-  rtc.setDOW(DOW);        // Set Day-of-Week to Вторник
-  rtc.setTime(H, M, S);     // Set the time to 09:11:00 (24hr format)
-  rtc.setDate(D, m, Y);   // Set the date to 25 марта 2014
-  rtc.writeProtect(true);  
+int conv_to_int(char num1, char num2) {
+  int result;
+  result=10*(int(num1)-48)+(int(num1)-48);
+  return result;
 }
 
 void print_DS1302()
@@ -126,6 +153,4 @@ void print_DHT()
       lcd.print("Error: checksum error");
       break;
     }
-  //delay(5000);
-  //i=0;
 }
