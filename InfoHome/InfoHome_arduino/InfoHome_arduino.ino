@@ -1,16 +1,16 @@
-/* I assume you know how to connect the DS1302 and LCD.
+/* Распиновка подключения экрана и часов к arduino
 
  DS1302:  CE pin    -> Arduino Digital 11
           I/O pin   -> Arduino Digital 10
           SCLK pin  -> Arduino Digital 9
 
-  LCD RS  pin to digital pin 6
-  LCD En  pin to digital pin 8
-  LCD D4  pin to digital pin 2
-  LCD D5  pin to digital pin 3
-  LCD D6  pin to digital pin 4
-  LCD D7  pin to digital pin 5
-  LCD R/W pin to digital pin 7
+1602:     LCD RS  pin to digital pin 6
+          LCD En  pin to digital pin 8
+          LCD D4  pin to digital pin 2
+          LCD D5  pin to digital pin 3
+          LCD D6  pin to digital pin 4
+          LCD D7  pin to digital pin 5
+          LCD R/W pin to digital pin 7
 */
 
 #include <OneWire.h>
@@ -18,122 +18,156 @@
 #include <LiquidCrystal.h>
 #include <dht.h>
 
+//инициализация линии OneWire
 OneWire  ds(12);  // линия 1-Wire будет на pin 12
-LiquidCrystal lcd(6, 8, 2, 3, 4, 5); // initialize the library with the numbers of the interface pins
 
-/* Set the appropriate digital I/O pin connections */
+//инициализация экрана 1602
+LiquidCrystal lcd(6, 8, 2, 3, 4, 5);
+int RW = 7;//вывод для разрещения записи в дисплей
+
+//инициализация модуля часов
 DS1302 rtc(11, 10, 9); // Create a DS1302 object
 
-/* Create buffers */
-char buf[50];
-char day[10];
-int i = 1;
-
-
-// создаём объект-сенсор
+//Для датчика температуры и влажности
 DHT sensor = DHT();
 
-int RW = 7;//вывод разрещения записи в дисплей
-byte m = 0;//простой счетчик
-byte data[12];//массив данных с датчика ds18b20
+//переменные для отображения данных с датчиков ds18b20
 byte type_s;
-byte addr[8];//массив с адресом датчика ds18b20
-byte addr1[8]= {0x28, 0x3C, 0x5B, 0x47, 0x02, 0x00, 0x00, 0x42}; //первый датчик ds18b20
-byte addr2[8]= {0x28, 0x75, 0x10, 0x60, 0x04, 0x00, 0x00, 0x1F}; //второй датчик ds18b20
+byte data[12]; //массив данных с датчика ds18b20
+byte addr[8];  //массив с адресом датчика ds18b20
 float celsius; //переменая для перевода в градусы цельсия
+
+//данные по первому датчику
+byte DatTemp1[8]= {0x28, 0x3C, 0x5B, 0x47, 0x02, 0x00, 0x00, 0x42}; //адрес первого датчика ds18b20
+char NameDatTemp1[8]=" HOME: ";//наименование первого датчика
+
+//данные по второму датчику
+byte DatTemp2[8]= {0x28, 0x75, 0x10, 0x60, 0x04, 0x00, 0x00, 0x1F}; //адрес второго датчика ds18b20
+char NameDatTemp2[8]="  OUT: ";//наименование второго датчика
+
+//массив хранения новой даты и времени
+char NewDateTime[21];
 
 //--------------------------------------------------------------
 void setup(void) 
 {
-  // set up the LCD's number of columns and rows: 
-  pinMode(RW, OUTPUT);
-  digitalWrite(RW, LOW);
+  pinMode(RW, OUTPUT);    //инициализируем вывод управления дисплеем
+  digitalWrite(RW, LOW);  //разрешаем запись в дисплей
+  
+  //инициализация дисплей в 16 исмволов и 2 строки
   lcd.begin(16, 2);
-  sensor.attach(A0); 
-  char ttt = 0xFF;
-  lcd.clear();
-  for (i=0; i<16; i++) {
-      lcd.setCursor(i, 0);
-      lcd.print(ttt);
-      lcd.setCursor(16-i, 1);
-      lcd.print(ttt);
-      delay(100);
-    };      
-  /*
-  rtc.writeProtect(false);
-  rtc.halt(false);
-  rtc.setDOW(7);        // Set Day-of-Week to FRIDAY
-  rtc.setTime(16, 8, 0);     // Set the time to 12:00:00 (24hr format)
-  rtc.setDate(3, 9, 2014);   // Set the date to August 6th, 2010
-  rtc.writeProtect(true);
-  rtc.halt(true);
-  */
   
-  lcd.clear();
-  for (i=1; i<256; i++) {
-    lcd.setCursor(1,0);
-    lcd.print (i);
-    lcd.setCursor(5,1);
-    lcd.print(char(i));
-    delay(200);
-    };
+  //датчик dth11 подключен к А0 выводу
+  sensor.attach(A0);
   
-  
+  //инициализируем СОМ порт
   Serial.begin(57600);
+    
+  //очищаем экран
+  lcd.clear();
 }
 
 //--------------------------------------------------------------
 void loop(void) 
 {
-  lcd.clear();
   if (Serial.available() > 0)  
   {  
     char inByte = Serial.read();  
     switch (inByte)
     {
-      case '1':
-        for( i = 0; i < 8; i++) {
-          addr[i] = addr1[i];
-        }
-        printDS18B20();
-     break;
-      case '2':
-        for( i = 0; i < 8; i++) {
-          addr[i] = addr2[i];
-        }
-        printDS18B20();
-     break;
-    }
-  }
-  print_DateTime();  
-  delay(1000);
-  m = m + 1;
-  if (m == 3) {
-    printDHT11();
-    }
-  if (m == 6) {
-    printDS18B20();
-    m=1;
-    delay(1000);
-    }  
+      case 'C':  //подстройка часов
+        Serial.print("O");//подтверждения получения команды
+        for (byte i=0;i<21;i++){
+          NewDateTime[i]=(byte)Serial.read();
+        };
+        InstallClock(NewDateTime);
+      break;
+      case 'T':  //получение адреса датчика и передача температуры
+        Serial.print("O");//подтверждения получения команды
+        for (byte i=0;i<8;i++){
+          addr[i]=(byte)Serial.read();
+        };
+        Serial.print(ReadTempDS18B20());
+      break;
+      case 'S':  //Поиск датчиков
+        Serial.print("O");//подтверждения получения команды
+      break;
+      case 'N':  //
+        Serial.print("O");//подтверждения получения команды
+      break;
+      case 'D':  //
+        Serial.print("O");//подтверждения получения команды
+      break;
+    };
+  };
 }  
 
+//-------------------------------------------------------------
+void InstallClock(char txt[21])
+{
+  //HH:MM:SS YYYY.mm.DD W
+  //21 char
+  int i=0;
+  int hh;
+  int mm;
+  int ss;
+  int YY;
+  int MM;
+  int DD;
+  int WW;
+  while (Serial.available()>0)
+  {
+    txt[i] = Serial.read();
+    i++;
+  };
+  hh= (int)txt[0]*10+(int)txt[1];
+  mm= (int)txt[3]*10+(int)txt[4];
+  ss= (int)txt[6]*10+(int)txt[7];
+  YY= (int)txt[9]*1000+(int)txt[10]*100+(int)txt[11]*10+(int)txt[12];
+  MM= (int)txt[14]*10+(int)txt[15];
+  DD= (int)txt[17]*10+(int)txt[18];
+  WW= (int)txt[20];
+  rtc.writeProtect(false);
+  rtc.halt(false);
+  rtc.setTime(hh, mm, ss); //установка времени (час, мин, сек)
+  rtc.setDate(MM, DD, YY); //установка даты (мес, день, год)
+  rtc.setDOW(WW);          //установка дня недели (1-понедельник, 7-воскресенье)
+  rtc.writeProtect(true);
+}
+
 //--------------------------------------------------------------
-void printDS18B20()
-{  
-  lcd.clear();
-  lcd.setCursor(0,0);
+void printLCD(char txt[], int x=0, int y=0, boolean d=1, boolean cl=1)
+{
+  //x  - position cursor (0(left char)-15(right char))
+  //y  - position cursor (0(up line)-1(down line))
+  //d  - enable delay (default - enable)
+  //cl - clear display (default - enable)
+  if (cl) { lcd.clear();};
+  lcd.setCursor(x,y);
+  lcd.print(txt);
+  if (d) { delay(TimeDelay); };
+}
+
+//--------------------------------------------------------------
+void ReadAddrDS18B20()
+{
   if ( !ds.search(addr)) {
-    lcd.println("No more addresses.");
-    //Serial.println();
+    Serial.println(0);
     ds.reset_search();
     delay(250);
     return;
   }
-  
+  else{
+    Serial.println(addr);
+  };
+}
+
+//--------------------------------------------------------------
+float ReadTempDS18B20()
+{  
   if ( OneWire::crc8( addr, 7) != addr[7]) {
-        lcd.print("CRC is not valid!\n");
-    return;
+        //lcd.print("CRC is not valid!\n");
+    return(0.0);
     }
   ds.reset();
   ds.select(addr);
@@ -143,7 +177,7 @@ void printDS18B20()
   ds.reset();
   ds.select(addr);    
   ds.write(0xBE);                   // считываем ОЗУ датчика
-  for ( i = 0; i < 9; i++) {        // обрабатываем 9 байт
+  for ( int i = 0; i < 9; i++) {        // обрабатываем 9 байт
     data[i] = ds.read();
   }
   // высчитываем температуру :)
@@ -163,65 +197,53 @@ void printDS18B20()
     //// default is 12 bit resolution, 750 ms conversion time
   }
   celsius = (float)raw / 16.0;
-  
-  
-  lcd.setCursor(2, 0);
-  lcd.print(celsius);
+  return(celsius);
 }
 
 //--------------------------------------------------------------
 void printDHT11()
 {
   // метод update заставляет сенсор выдать текущие измерения
+  char msg[16];
   sensor.update();
-  lcd.clear();
   switch (sensor.getLastError())
     {
     case DHT_ERROR_OK:
-      char msg[128];
       // данные последнего измерения можно считать соответствующими
       // методами
       sprintf(msg, "Temp. = %dC", sensor.getTemperatureInt());
-      lcd.setCursor(0, 0);              
-      lcd.print(msg);              
-      sprintf(msg, "Humidity = %d%%",sensor.getHumidityInt());
-      lcd.setCursor(0, 1);              
-      lcd.print(msg);       
+      printLCD(msg,6,0,0);      
+      sprintf(msg, "Humidity = %d%%",sensor.getHumidityInt());      
+      printLCD(msg,6,1,1,1);
       break;
     case DHT_ERROR_START_FAILED_1:
-      lcd.print("Error: start failed (stage 1)");
+      sprintf(msg, "Error:sf(st. 1)");
+      printLCD(msg,6,1);
       break;
     case DHT_ERROR_START_FAILED_2:
-      lcd.print("Error: start failed (stage 2)");
+      sprintf(msg, "Error:sf(st. 2)");
+      printLCD(msg,6,1);      
       break;
     case DHT_ERROR_READ_TIMEOUT:
-      lcd.print("Error: read timeout");
+      sprintf(msg, "Error:timeout");
+      printLCD(msg,6,1);      
       break;
     case DHT_ERROR_CHECKSUM_FAILURE:
-      lcd.print("Error: checksum error");
+      sprintf(msg, "Error:check err");
+      printLCD(msg,6,1); 
       break;
     }
-  delay(5000);
-  i=0;
 }
 
 //--------------------------------------------------------------
 void print_DateTime()
 {
-  // Display time centered on the upper line
-  //lcd.setCursor(0, 0);
-  //lcd.print("/");
-  lcd.setCursor(4, 0);
-  lcd.print(rtc.getTimeStr());
-  
-  // Display abbreviated Day-of-Week in the lower left corner
-  lcd.setCursor(0, 1);
-  lcd.print(rtc.getDOWStr(1));
-  
-  // Display date in the lower right corner
-  lcd.setCursor(7, 1);
-  lcd.print(rtc.getDateStr(FORMAT_SHORT));
-
-  // Wait one second before repeating :)
-  delay (1000);
+  //print Time
+  printLCD(rtc.getTimeStr(),4,0,0);
+  // print Day-of-Week
+  printLCD(rtc.getDOWStr(1),0,1,0,0);
+  //print Date
+  printLCD(rtc.getDateStr(FORMAT_SHORT),7,1,1,0);
 }
+
+
