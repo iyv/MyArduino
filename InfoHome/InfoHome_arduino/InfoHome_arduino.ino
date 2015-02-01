@@ -20,16 +20,19 @@
 
 //инициализация линии OneWire
 OneWire  ds(12);  // линия 1-Wire будет на pin 12
-
 //инициализация экрана 1602
 LiquidCrystal lcd(6, 8, 2, 3, 4, 5);
 int RW = 7;//вывод для разрещения записи в дисплей
-
-//инициализация модуля часов
+//Инициализация часов
 DS1302 rtc(11, 10, 9); // Create a DS1302 object
-
 //Для датчика температуры и влажности
 DHT sensor = DHT();
+
+/* Create buffers */
+//char buf[50];
+//char day[10];
+int i = 1;
+int rez;
 
 //переменные для отображения данных с датчиков ds18b20
 byte type_s;
@@ -48,6 +51,7 @@ char NameDatTemp2[8]="  OUT: ";//наименование второго дат�
 //массив хранения новой даты и времени
 char NewDateTime[21];
 
+
 //--------------------------------------------------------------
 void setup(void) 
 {
@@ -59,7 +63,7 @@ void setup(void)
   
   //датчик dth11 подключен к А0 выводу
   sensor.attach(A0);
-  
+
   //инициализируем СОМ порт
   Serial.begin(57600);
     
@@ -98,8 +102,37 @@ void loop(void)
       case 'D':  //
         Serial.print("O");//подтверждения получения команды
       break;
+      case '1':
+        for( i = 0; i < 8; i++) {
+          addr[i] = addr1[i];
+        }
+        printDS18B20(1);
+     break;
+      case '2':
+        for( i = 0; i < 8; i++) {
+          addr[i] = addr2[i];
+        }
+        printDS18B20(1);
+     break;
+     case '0':
+        NMenu = Serial.read();
+        lcd.clear();
+        print_Menu();
+        delay(1000);
+     break;
+    }
+  }
+  print_DateTime();  
+  delay(1000);
+  m = m + 1;
+  if (m == 3) {
+    printDHT11();
     };
-  };
+  if (m == 6) {
+    printDS18B20(0);
+    m=1;
+    delay(1000);
+    };  
 }  
 
 //-------------------------------------------------------------
@@ -165,6 +198,16 @@ void ReadAddrDS18B20()
 //--------------------------------------------------------------
 float ReadTempDS18B20()
 {  
+  lcd.clear();
+  lcd.setCursor(0,0);
+  if (poisk == 0){
+    if ( !ds.search(addr)) {
+      lcd.println("No more addresses.");
+      //Serial.println();
+      ds.reset_search();
+      delay(250);
+      return;
+    }
   if ( OneWire::crc8( addr, 7) != addr[7]) {
         //lcd.print("CRC is not valid!\n");
     return(0.0);
@@ -198,6 +241,19 @@ float ReadTempDS18B20()
   }
   celsius = (float)raw / 16.0;
   return(celsius);
+}
+
+void FindDS18B20(byte poisk)
+{  
+  if (poisk == 0){
+    lcd.setCursor(0, 0);
+    lcd.print("Temp= ");
+    lcd.print(celsius);
+    lcd.print("C");
+    }
+  else {
+    Serial.println(celsius);
+    };
 }
 
 //--------------------------------------------------------------
@@ -245,5 +301,3 @@ void print_DateTime()
   //print Date
   printLCD(rtc.getDateStr(FORMAT_SHORT),7,1,1,0);
 }
-
-
