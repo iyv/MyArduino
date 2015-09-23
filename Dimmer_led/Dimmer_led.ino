@@ -1,25 +1,11 @@
 /*
-  Dimmer
- 
- Demonstrates the sending data from the computer to the Arduino board,
- in this case to control the brightness of an LED.  The data is sent
- in individual bytes, each of which ranges from 0 to 255.  Arduino
- reads these bytes and uses them to set the brightness of the LED.
- 
- The circuit:
- LED attached from digital pin 9 to ground.
- Serial connection to Processing, Max/MSP, or another serial application
- 
- created 2006
- by David A. Mellis
- modified 30 Aug 2011
- by Tom Igoe and Scott Fitzgerald
- 
- This example code is in the public domain.
- 
- http://www.arduino.cc/en/Tutorial/Dimmer
- 
- */
+Диммер светодиодной лампы(светильника)
+ledPin - номер вывода к которому подключена лампа
+Управление через RS-232(TTL).
+Последнее редактирование:2014
+Автор: IYV
+Arduino Mega 2560
+*/
 
 const int ledPin = 3;      // the pin that the LED is attached to
 int level=0;
