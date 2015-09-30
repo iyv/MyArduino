@@ -26,101 +26,101 @@ struct PultCommand UpData;
 #include <nRF24L01.h>
 #include <MirfHardwareSpiDriver.h>
 
+unsigned long oldtime;
+int LM1 = 2;
+int LM2 = 3;
+int RM1 = 4;
+int RM2 = 5;
+
+void stopCar(){
+  digitalWrite(LM1, LOW);
+  digitalWrite(RM1, LOW);
+  analogWrite(LM2, 0);
+  analogWrite(RM2, 0);
+  //Serial.println("Stop car");
+}
+
 void setup(){
   Serial.begin(9600);
-  
-  /*
-   * Set the SPI Driver.
-   */
   Mirf.cePin = 9;
   Mirf.csnPin = 10;
-
   Mirf.spi = &MirfHardwareSpi;
-  
-  /*
-   * Setup pins / SPI.
-   */
-   
   Mirf.init();
-  
-  /*
-   * Configure reciving address.
-   */
-   
   Mirf.setRADDR((byte *)"serv1");
-  
-  /*
-   * Set the payload length to sizeof(unsigned long) the
-   * return type of millis().
-   *
-   * NB: payload on client and server must be the same.
-   */
-   
-  //Mirf.payload = sizeof(unsigned long);
   Mirf.payload = sizeof(UpData);
-  
-  /*
-   * Write channel and payload config then power up reciver.
-   */
-  Mirf.channel = 5;
-  
+  Mirf.channel = 10;
   Mirf.config();
-  
-  Serial.println("Listening..."); 
+  pinMode(LM1, OUTPUT);
+  pinMode(LM2, OUTPUT);
+  pinMode(RM1, OUTPUT);
+  pinMode(RM2, OUTPUT);
+  stopCar();
+  Serial.println("Listening...");
+ oldtime = millis(); 
 }
 
 void loop(){
-  /*
-   * A buffer to store the data.
-   */
-
-  //byte data[Mirf.payload];
+  unsigned long newtime = millis();
+  if ((newtime-oldtime)>3200){
+    stopCar();
+    oldtime = newtime;
+    Serial.println("Stop car 1");
+  }
   
-  /*
-   * If a packet has been recived.
-   *
-   * isSending also restores listening mode when it 
-   * transitions from true to false.
-   */
-   
   if(!Mirf.isSending() && Mirf.dataReady()){
     Serial.println("Got packet");
-    
-    /*
-     * Get load the packet into the buffer.
-     */
-     
-    //Mirf.getData(data);
     Mirf.getData((byte *) &UpData);
-    /*
-    UpData.LM = data[0];
-    UpData.LZ = data[1];
-    UpData.RM = data[2];
-    UpData.RZ = data[3];
-    */
-    /*
-     * Set the send address.
-     */
+    oldtime = newtime;
+    if (UpData.RZ > 6){
+      if (UpData.LZ > 6){
+        digitalWrite(LM1, HIGH);
+        digitalWrite(RM1, LOW);
+        analogWrite(LM1, 0);
+        analogWrite(LM1, 0);
+        Serial.println("Up Right");
+      }
+      if(UpData. LZ < 3){
+        digitalWrite(LM1, LOW);
+        digitalWrite(RM1, HIGH);
+        analogWrite(LM1, 0);
+        analogWrite(LM1, 0);
+        Serial.println("Up Left");
+      }
+      else if((UpData.LZ <= 6)||(UpData.LZ >= 3)){
+        digitalWrite(LM1, HIGH);
+        digitalWrite(RM1, HIGH);
+        analogWrite(LM1, 0);
+        analogWrite(LM1, 0);
+        Serial.println("Up");
+      }
+    }
+    else if (UpData.RZ < 3){
+      if (UpData.LZ > 6){
+        digitalWrite(LM1, LOW);
+        digitalWrite(RM1, LOW);
+        analogWrite(LM1, 255);
+        analogWrite(LM1, 0);
+        Serial.println("Down Rigth");
+      }
+      if(UpData. LZ < 3){
+        digitalWrite(LM1, LOW);
+        digitalWrite(RM1, LOW);
+        analogWrite(LM1, 0);
+        analogWrite(LM1, 255);
+        Serial.println("Down Left");
+      }
+      if((UpData.LZ <= 6)||(UpData.LZ >= 3)){
+        digitalWrite(LM1, LOW);
+        digitalWrite(RM1, LOW);
+        analogWrite(LM1, 255);
+        analogWrite(LM1, 255);
+        Serial.println("DOWN");
+      }
+    }
+    else {
+      stopCar();
+      Serial.println("Stop car 2");
+    }
     
-    Mirf.setTADDR((byte *)"clie1");
-    
-    /*
-     * Send the data back to the client.
-     */
-    Serial.println(UpData.LM);
-    Serial.println(UpData.LZ, DEC);
-    Serial.println(UpData.RM);
-    Serial.println(UpData.RZ, DEC);
-    //Serial.println("************");
-     
-    Mirf.send((byte *)&UpData);
-    
-    /*
-     * Wait untill sending has finished
-     *
-     * NB: isSending returns the chip to receving after returning true.
-     */
-      
-    Serial.println("Reply sent.");
   }
 }
