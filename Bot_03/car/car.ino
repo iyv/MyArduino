@@ -70,57 +70,57 @@ void loop(){
   if(!Mirf.isSending() && Mirf.dataReady()){
     Serial.println("Got packet");
     Mirf.getData((byte *) &UpData);
-    oldtime = newtime;
+    
     if (UpData.RZ > 6){
       if (UpData.LZ > 6){
         digitalWrite(LM1, HIGH);
         digitalWrite(RM1, LOW);
-        analogWrite(LM1, 0);
-        analogWrite(LM1, 0);
+        analogWrite(LM2, 0);
+        analogWrite(RM2, 0);
         Serial.println("Up Right");
       }
-      if(UpData. LZ < 3){
-        digitalWrite(LM1, LOW);
-        digitalWrite(RM1, HIGH);
-        analogWrite(LM1, 0);
-        analogWrite(LM1, 0);
-        Serial.println("Up Left");
-      }
-      else if((UpData.LZ <= 6)||(UpData.LZ >= 3)){
-        digitalWrite(LM1, HIGH);
-        digitalWrite(RM1, HIGH);
-        analogWrite(LM1, 0);
-        analogWrite(LM1, 0);
-        Serial.println("Up");
-      }
+      else if(UpData. LZ < 4){
+              digitalWrite(LM1, LOW);
+              digitalWrite(RM1, HIGH);
+              analogWrite(LM2, 0);
+              analogWrite(RM2, 0);
+              Serial.println("Up Left");
+            }
+            else {
+                  digitalWrite(LM1, HIGH);
+                  digitalWrite(RM1, HIGH);
+                  analogWrite(LM2, 0);
+                  analogWrite(RM2, 0);
+                  Serial.println("Up");
+                  }
     }
-    else if (UpData.RZ < 3){
-      if (UpData.LZ > 6){
-        digitalWrite(LM1, LOW);
-        digitalWrite(RM1, LOW);
-        analogWrite(LM1, 255);
-        analogWrite(LM1, 0);
-        Serial.println("Down Rigth");
-      }
-      if(UpData. LZ < 3){
-        digitalWrite(LM1, LOW);
-        digitalWrite(RM1, LOW);
-        analogWrite(LM1, 0);
-        analogWrite(LM1, 255);
-        Serial.println("Down Left");
-      }
-      if((UpData.LZ <= 6)||(UpData.LZ >= 3)){
-        digitalWrite(LM1, LOW);
-        digitalWrite(RM1, LOW);
-        analogWrite(LM1, 255);
-        analogWrite(LM1, 255);
-        Serial.println("DOWN");
-      }
-    }
-    else {
-      stopCar();
-      Serial.println("Stop car 2");
-    }
-    
+    else if (UpData.RZ < 4){
+            if (UpData.LZ > 6){
+              digitalWrite(LM1, LOW);
+              digitalWrite(RM1, LOW);
+              analogWrite(LM2, 255);
+              analogWrite(RM2, 0);
+              Serial.println("Down Rigth");
+            }
+            else if(UpData. LZ < 4){
+                    digitalWrite(LM1, LOW);
+                    digitalWrite(RM1, LOW);
+                    analogWrite(LM2, 0);
+                    analogWrite(RM2, 255);
+                    Serial.println("Down Left");
+                 }
+                 else {
+                    digitalWrite(LM1, LOW);
+                    digitalWrite(RM1, LOW);
+                    analogWrite(LM2, 255);
+                    analogWrite(RM2, 255);
+                    Serial.println("DOWN");
+                    }
+          }
+          else {
+                stopCar();
+                Serial.println("Stop car 2");
+               }
+    oldtime = newtime;
   }
 }
