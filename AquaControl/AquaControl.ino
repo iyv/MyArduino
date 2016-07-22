@@ -6,6 +6,13 @@
 
 #define TIME_STOP  "The DS1307 is stopped.  Please initialize the time and date."
 #define TIME_ERROR "DS1307 read error!  Please check the circuitry."
+#define STR_RAZDEL "=================="
+#define VOZD_ON "Vozd ON"
+#define VOZD_OFF "Vozd OFF"
+#define SVET_ON "Svet ON"
+#define SVET_OFF "Svet OFF"
+#define TERM_ON "Term ON"
+#define TERM_OFF "Term OFF"
 
 //распределние PIN-ов Arduino
 int pinGerkon = 2;    //контакт датчика положения кормушки (геркон)
@@ -47,6 +54,7 @@ void print2digits(int number) {
 //****************************************************************************
 //печать даты и времени в последовательный порт
 void printTimeData(){
+  Serial.println(STR_RAZDEL);
   print2digits(TimeData.Hour);
   Serial.write(':');
   print2digits(TimeData.Minute);
@@ -91,6 +99,7 @@ void setup() {
   // Start the radio listening for data
   radio.startListening();
   Serial.println("Programm start....");
+  Serial.println(STR_RAZDEL);
 }
 
 //****************************************************************************
@@ -129,13 +138,89 @@ void nRFEvent(){
 //****************************************************************************
 void rs232Event(){
   //new rs-232 message
+  //format new time
+  //t17:54:00-22/07/2016
+  byte numSimb = 0;
+  if (Serial.available() > 0){
+    char Simb = Serial.read();
+    numSimb++;
+    int h = 0;
+    int m = 0;
+    int s = 0;
+    int dayS = 0;
+    int mesS = 0;
+    int yearS = 0;
+    if (Simb == 't'){
+      while (numSimb < 20){
+        while(Serial.available() == 0){};
+        int Simb = Serial.read()-48;
+        switch (numSimb){
+          case 1:
+            h += Simb *10;
+          break;
+          case 2:
+            h += Simb;
+          break;
+          case 4:
+            m += Simb*10;
+          break;
+          case 5:
+            m += Simb;
+          break;
+          case 7:
+            s += Simb*10;
+          break;
+          case 8:
+            s += Simb;
+          break;
+          case 10:
+            dayS += Simb*10;
+          break;
+          case 11:
+            dayS += Simb;
+          break;
+          case 13:
+            mesS += Simb*10;
+          break;
+          case 14:
+            mesS += Simb;
+          break;
+          case 16:
+            yearS += Simb*1000;
+          break;
+          case 17:
+            yearS += Simb*100;
+          break;
+          case 18:
+            yearS += Simb*10;
+          break;
+          case 19:
+            yearS += Simb;
+          break;
+        }
+        //Serial.print(numSimb);
+        //Serial.print(" - ");
+        //Serial.println(Simb);
+        numSimb++;
+      }
+      TimeData.Hour = h;
+      TimeData.Minute = m;
+      TimeData.Second = s;
+      TimeData.Day = dayS;
+      TimeData.Month = mesS;
+      TimeData.Year = yearS-1970;
+      RTC.write(TimeData);
+      Serial.println("Install date/time");
+      Serial.println(STR_RAZDEL);
+    }
+  }
 }
 
 
 //****************************************************************************
 void ControlTerm(bool SwTerm, bool ButtonS = false){
   //управление подогревом
-  Serial.println("Term control");
+  //Serial.println("Term control");
   if (TermEn == SwTerm){
     BlockTerm = false;
   }
@@ -174,7 +259,7 @@ void ControlTerm(bool SwTerm, bool ButtonS = false){
 //****************************************************************************
 void ControlVozduh(bool SwVozduh, bool ButtonS = false){
   //управление воздухом
-  Serial.println("Vozduh control");
+  //Serial.println("Vozduh control");
   if (VozduhEn == SwVozduh){
     BlockVozduh = false;
   }
@@ -213,7 +298,7 @@ void ControlVozduh(bool SwVozduh, bool ButtonS = false){
 //****************************************************************************
 void ControlSvet(bool SwSvet, bool ButtonS = false){
   //управление светом
-  Serial.println("Svet control");
+  //Serial.println("Svet control");
   if (SvetEn == SwSvet){
     BlockSvet = false;
   }
@@ -252,7 +337,7 @@ void ControlSvet(bool SwSvet, bool ButtonS = false){
 //****************************************************************************
 void ControlKorm(){
   //кормление
-  Serial.println("Korm control");
+  //Serial.println("Korm control");
   digitalWrite(pinKorm,LOW);
   delay(200);
   while (!digitalRead(pinGerkon)){}
@@ -301,87 +386,86 @@ void timeEvent(){
       printTimeData();
       timeUpdate = millis();
       
-      Serial.println("Time read");
+      //Serial.println("Time read");
       //diapazon(int startH, int startM, int endH, int endM)
       //СВЕТ
       if (diapazon(6, 30, 9, 59)){
         //ledOn
         ControlSvet(true);
-        Serial.println("Led ON");
+        Serial.println(SVET_ON);
       }
       if (diapazon(10, 00, 13, 59)){
         //ledOff
         ControlSvet(false);
-        Serial.println("Led OFF");
+        Serial.println(SVET_OFF);
       }
       if (diapazon(14, 00, 21, 30)){
         //ledOn
         ControlSvet(true);
-        Serial.println("Led ON");
+        Serial.println(SVET_ON);
       }
       if (diapazon(21, 31, 6, 29)){
         //ledOff
         ControlSvet(false);
-        Serial.println("Led OFF");
+        Serial.println(SVET_OFF);
       }
 
       //ВОЗДУХ
       if (diapazon(6, 30, 17, 55)){
         //filterOn
         ControlVozduh(true);
-        Serial.println("Vozduh ON");
+        Serial.println(VOZD_ON);
       }
       if (diapazon(17, 56, 18, 20)){
         //filterOff
         ControlVozduh(false);
-        Serial.println("Vozduh Off");
+        Serial.println(VOZD_OFF);
       }
       if (diapazon(18, 21, 3, 30)){
         //filterOn
         ControlVozduh(true);
-        Serial.println("Vozduh ON");
+        Serial.println(VOZD_ON);
       }
       if (diapazon(3, 31, 6, 29)){
         //filterOff
         ControlVozduh(false);
-        Serial.println("Vozduh Off");
+        Serial.println(VOZD_OFF);
       }
 
       //ПОДОГРЕВ
       if (diapazon(3, 00, 8, 59)){
         //termOn
         ControlTerm(true);
-        Serial.println("Term ON");
+        Serial.println(TERM_ON);
       }
       if (diapazon(9, 00, 14, 59)){
         //termOff
         ControlTerm(false);
-        Serial.println("Term Off");
+        Serial.println(TERM_OFF);
       }
       if (diapazon(15, 00, 20, 59)){
         //termOn
         ControlTerm(true);
-        Serial.println("Term ON");
+        Serial.println(TERM_ON);
       }
       if (diapazon(21, 00, 2, 59)){
         //termOff
         ControlTerm(false);
-        Serial.println("Term Off");
+        Serial.println(TERM_OFF);
       }
 
       //КОРМЛЕНИЕ
       if (diapazon(18, 0, 19, 59)){
         //kormOn
         if (KormEn == false){
+          Serial.println("Korm ON");
           ControlKorm();
-          Serial.println("Korm on");
         }
       }
       if (diapazon(20, 00, 17, 59)){
         //kormOff
         if (KormEn){
           KormEn = false;
-          Serial.println("korm off");
         }
       }
       
