@@ -4,46 +4,54 @@
 #include <SPI.h>
 #include "RF24.h"
 
-#define TIME_STOP  "The DS1307 is stopped.  Please initialize the time and date."
-#define TIME_ERROR "DS1307 read error!  Please check the circuitry."
-#define STR_RAZDEL "=================="
-#define VOZD_ON "Vozd ON"
-#define VOZD_OFF "Vozd OFF"
-#define SVET_ON "Svet ON"
-#define SVET_OFF "Svet OFF"
-#define TERM_ON "Term ON"
-#define TERM_OFF "Term OFF"
+//константы сообщений для отправки в COM порт
+#define TIME_STOP   "The DS1307 is stopped.  Please initialize the time and date."
+#define TIME_ERROR  "DS1307 read error!  Please check the circuitry."
+#define STR_RAZDEL  "=================="
+#define VOZD_ON     "Vozd ON"
+#define VOZD_OFF    "Vozd OFF"
+#define SVET_ON     "Svet ON"
+#define SVET_OFF    "Svet OFF"
+#define TERM_ON     "Term ON"
+#define TERM_OFF    "Term OFF"
 
 //распределние PIN-ов Arduino
-int pinGerkon = 2;    //контакт датчика положения кормушки (геркон)
-int pinKorm = 3;      //контакт реле включения кормушки
-int pinSvet = 4;      //контакт реле включения света 220В
-int pinVozduh = 5;    //контакт реле включения фильтра
-int pinTerm = 6;      //контакт реле включения подогрева воды
-RF24 radio(7,8);      //контакты подключения радиомодуля (SPI)
-int pinLamp = 9;      //ШИМ управление подсветкой 12В (полевой транзистор)
-int pinDs18b20 = 10;  //контакт датчика температуры (DS18b20)
-int pinFotores = A0;////контакт датчика внешнего освещения аквариума (фоторезистор)
-int pinButtonTerm = A1;//включение/выключение подогрева воды (кнопка)
-int pinButtonSvet = A2;//включение/выключение освещения в аквариуме (кнопка)
+int pinGerkon = 2;      //контакт датчика положения кормушки (геркон)
+int pinKorm = 3;        //контакт реле включения кормушки
+int pinSvet = 4;        //контакт реле включения света 220В
+int pinVozduh = 5;      //контакт реле включения фильтра
+int pinTerm = 6;        //контакт реле включения подогрева воды
+
+int pinLamp = 9;        //ШИМ управление подсветкой 12В (полевой транзистор)
+int pinDs18b20 = 10;    //контакт датчика температуры (DS18b20)
+int pinFotores = A0;    //контакт датчика внешнего освещения аквариума (фоторезистор)
+int pinButtonTerm = A1; //включение/выключение подогрева воды (кнопка)
+int pinButtonSvet = A2; //включение/выключение освещения в аквариуме (кнопка)
 
 unsigned long timeUpdate = 0;//время последнего обновления данных по времени
 
 //переменные хранения состояний
-bool SvetEn = false;      //переменная хранения текущего состояния освещения
-bool BlockSvet = false;   //переменная блокирования переключения света по расписанию
-bool TermEn = false;      //переменная хранения текущего состояния подогрева
-bool BlockTerm = false;   //переменная блокирования переключения подогрева по расписанию
-bool VozduhEn = false;    //переменная хранения текущего состояния фильрования
-bool BlockVozduh = false; //переменная блокирования переключения фильтрования по расписанию
-bool KormEn = false;      //индикация о выполненном кормлении в периоде
+bool SvetEn       = false; //переменная хранения текущего состояния освещения
+bool BlockSvet    = false; //переменная блокирования переключения света по расписанию
+bool TermEn       = false; //переменная хранения текущего состояния подогрева
+bool BlockTerm    = false; //переменная блокирования переключения подогрева по расписанию
+bool VozduhEn     = false; //переменная хранения текущего состояния фильрования
+bool BlockVozduh  = false; //переменная блокирования переключения фильтрования по расписанию
+bool KormEn       = false; //индикация о выполненном кормлении в периоде
 
-tmElements_t TimeData;    //объект хранения времени
+tmElements_t TimeData;     //объект хранения времени
 
-byte addresses[][6] = {"1Node","2Node"};
+RF24 radio(7,8);           //контакты подключения радиомодуля (SPI)
+byte RFData[32];           //размер сообщения
+//"Aqvar" - имя данного модуля
+//"Serv0" - имя центрального сервера
+byte addresses[][6] = {"Aqvar","Serv0"};
+bool TX = 0, RX = 1;
+bool RFStat;
 
 //****************************************************************************
-//добавление 0 к числу с одним знаком
+//                  добавление 0 к числу с одним знаком
+//****************************************************************************
 void print2digits(int number) {
   if (number >= 0 && number < 10) {
     Serial.write('0');
@@ -52,7 +60,8 @@ void print2digits(int number) {
 }
 
 //****************************************************************************
-//печать даты и времени в последовательный порт
+//             печать даты и времени в последовательный порт
+//****************************************************************************
 void printTimeData(){
   Serial.println(STR_RAZDEL);
   print2digits(TimeData.Hour);
@@ -61,17 +70,20 @@ void printTimeData(){
   Serial.write(':');
   print2digits(TimeData.Second);
   Serial.print(", ");
-  Serial.print(TimeData.Day);
+  print2digits(TimeData.Day);
   Serial.write('.');
-  Serial.print(TimeData.Month);
+  print2digits(TimeData.Month);
   Serial.write('.');
   Serial.print(tmYearToCalendar(TimeData.Year));
   Serial.println();
 }
 
 //****************************************************************************
+//                                  SETUP
+//****************************************************************************
 void setup() {
   Serial.begin(9600);
+  //Инициализация выходов
   pinMode(pinSvet, OUTPUT);
   digitalWrite(pinSvet, HIGH);
   pinMode(pinKorm, OUTPUT);
@@ -82,34 +94,41 @@ void setup() {
   digitalWrite(pinVozduh, HIGH);
   pinMode(pinLamp, OUTPUT);
   digitalWrite(pinLamp, LOW);
-  
+  //Инициализация входов
   pinMode(pinFotores, INPUT);
   pinMode(pinButtonTerm, INPUT);
   pinMode(pinButtonSvet, INPUT);
   pinMode(pinGerkon, INPUT);
-  Serial.println("Pin init");
-
+  //Опрос события таймера
   timeEvent();
   
   //включение nRF24l01
-  Serial.println("Radio start");
   radio.begin();
+  radio.setChannel(1);
+  radio.setPALevel(RF24_PA_MAX);
+  radio.setDataRate(RF24_1MBPS);
   radio.openWritingPipe(addresses[0]);
   radio.openReadingPipe(1,addresses[1]);
-  // Start the radio listening for data
+  //Запуск на ожидание данных nRF24l01
   radio.startListening();
-  Serial.println("Programm start....");
+  RFStat = TX;
+  
+  Serial.println("Запуск программы....");
   Serial.println(STR_RAZDEL);
 }
 
 //****************************************************************************
+//                 Проверка на вхождение в диапазон времени:
+//                 True - текущее время входит в период
+//                 False - текущее время не входит в период
+//****************************************************************************
 bool diapazon(int startH, int startM, int endH, int endM){
   //проверка на вхождение в диапазон времени
-  int TH = TimeData.Hour;
-  int TM = TimeData.Minute;
-  int timeT = TH*60+TM;
-  int timeS = startH*60+startM;
-  int timeE = endH*60+endM;
+  int TH = TimeData.Hour;       //Час в текущем времени
+  int TM = TimeData.Minute;     //Минуты текущего времени
+  int timeT = TH*60+TM;         //Переводим текущее время во время в минутах с начала суток
+  int timeS = startH*60+startM; //Переводим время начала периода во время в минутах с начала суток
+  int timeE = endH*60+endM;     //Переводим время окончания периода во время в минутах с начала суток
   //если время начала периода больше времени окончания периода, то проверяем от времени старта до 24 часов и от 0 часов до времени окончания
   if (timeS > timeE){
     if(((timeT >= timeS) && (timeT <=1440)) || ((timeT >= 0) && (timeT <= timeE))){
@@ -119,7 +138,7 @@ bool diapazon(int startH, int startM, int endH, int endM){
       return false;
     }
   }
-  //иначе проверяем чтоб время входила в промежуток от времни старта до времени окончания
+  //иначе проверяем чтоб время входило в промежуток от времени старта до времени окончания
   else{
     if((timeT >= timeS) && (timeT <= timeE)){
       return true;
@@ -131,10 +150,20 @@ bool diapazon(int startH, int startM, int endH, int endM){
 }
 
 //****************************************************************************
+//            Проверка на получение данных с модуля nRF24L01
+//****************************************************************************
 void nRFEvent(){
   //new nRF message
+  if (RFStat){
+    //Read data
+  }
+  else{
+    //Write Data
+  }
 }
 
+//****************************************************************************
+//                  Обработка сообщения по Rs-232
 //****************************************************************************
 void rs232Event(){
   //new rs-232 message
@@ -218,6 +247,8 @@ void rs232Event(){
 
 
 //****************************************************************************
+//                         Управление обогревом
+//****************************************************************************
 void ControlTerm(bool SwTerm, bool ButtonS = false){
   //управление подогревом
   if (TermEn == SwTerm){
@@ -256,6 +287,8 @@ void ControlTerm(bool SwTerm, bool ButtonS = false){
 }
 
 //****************************************************************************
+//                      Управление компрессором
+//****************************************************************************
 void ControlVozduh(bool SwVozduh, bool ButtonS = false){
   //управление воздухом
   if (VozduhEn == SwVozduh){
@@ -293,6 +326,8 @@ void ControlVozduh(bool SwVozduh, bool ButtonS = false){
   }
 }
 
+//****************************************************************************
+//                         Управление светом
 //****************************************************************************
 void ControlSvet(bool SwSvet, bool ButtonS = false){
   //управление светом
@@ -333,16 +368,25 @@ void ControlSvet(bool SwSvet, bool ButtonS = false){
 }
 
 //****************************************************************************
+//                      Управление кормлением
+//****************************************************************************
 void ControlKorm(){
   //кормление
   //Serial.println("Korm control");
   digitalWrite(pinKorm,LOW);
-  delay(200);
+  while (digitalRead(pinGerkon)){}
+  delay(100);
+  while (!digitalRead(pinGerkon)){}
+  delay(100);
+  while (digitalRead(pinGerkon)){}
+  delay(100);
   while (!digitalRead(pinGerkon)){}
   digitalWrite(pinKorm,HIGH);
   KormEn = true;
 }
 
+//****************************************************************************
+//                      Обработка события кнопок
 //****************************************************************************
 void buttonEvent(){
   //нажата кнопка подогрева
@@ -357,6 +401,7 @@ void buttonEvent(){
     else{
       ControlTerm(true, true);
     }
+    delay(200);
   }
   //нажата кнопка освещения
   if(digitalRead(pinButtonSvet)){
@@ -369,23 +414,23 @@ void buttonEvent(){
     else{
       ControlSvet(true, true);
     }
+    delay(200);
   }
 }
 
 //****************************************************************************
+//                      Обработка события времени
+//****************************************************************************
 void timeEvent(){
-  //time event
-  //Serial.print("Time event- ");
-  //Serial.println(millis());
-  if ((timeUpdate + 10000) < millis()){
+  unsigned long NowTimer = millis();
+  //Если с времени последнего обновления прошло больше 10 секунд
+  if (((timeUpdate + 10000) < NowTimer)||(timeUpdate > NowTimer)){
     //получение текущего времени
     if (RTC.read(TimeData)) {
       //вывод даты и времени в rs-232
       printTimeData();
       timeUpdate = millis();
       
-      //Serial.println("Time read");
-      //diapazon(int startH, int startM, int endH, int endM)
       //СВЕТ
       if (diapazon(6, 30, 9, 59)){
         //ledOn
@@ -414,12 +459,12 @@ void timeEvent(){
         ControlVozduh(true);
         Serial.println(VOZD_ON);
       }
-      if (diapazon(17, 56, 18, 20)){
+      if (diapazon(18, 56, 19, 20)){
         //filterOff
         ControlVozduh(false);
         Serial.println(VOZD_OFF);
       }
-      if (diapazon(18, 21, 3, 30)){
+      if (diapazon(19, 21, 3, 30)){
         //filterOn
         ControlVozduh(true);
         Serial.println(VOZD_ON);
@@ -453,14 +498,14 @@ void timeEvent(){
       }
 
       //КОРМЛЕНИЕ
-      if (diapazon(18, 0, 19, 59)){
+      if (diapazon(19, 0, 20, 59)){
         //kormOn
         if (KormEn == false){
           Serial.println("Korm ON");
           ControlKorm();
         }
       }
-      if (diapazon(20, 00, 17, 59)){
+      if (diapazon(21, 00, 18, 59)){
         //kormOff
         if (KormEn){
           KormEn = false;
