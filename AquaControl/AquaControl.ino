@@ -28,7 +28,7 @@ int pinFotores = A0;    //контакт датчика внешнего осв�
 int pinButtonTerm = A1; //включение/выключение подогрева воды (кнопка)
 int pinButtonSvet = A2; //включение/выключение освещения в аквариуме (кнопка)
 
-unsigned long timeUpdate = 0;//время последнего обновления данных по времени
+unsigned long timeUpdate = 999999;//время последнего обновления данных по времени
 
 //переменные хранения состояний
 bool SvetEn       = false; //переменная хранения текущего состояния освещения
@@ -113,7 +113,7 @@ void setup() {
   radio.startListening();
   RFStat = TX;
   
-  Serial.println("Запуск программы....");
+  Serial.println("Programm start....");
   Serial.println(STR_RAZDEL);
 }
 
@@ -372,15 +372,16 @@ void ControlSvet(bool SwSvet, bool ButtonS = false){
 //****************************************************************************
 void ControlKorm(){
   //кормление
-  //Serial.println("Korm control");
+  Serial.println("Korm control");
   digitalWrite(pinKorm,LOW);
-  while (digitalRead(pinGerkon)){}
-  delay(100);
-  while (!digitalRead(pinGerkon)){}
-  delay(100);
-  while (digitalRead(pinGerkon)){}
-  delay(100);
-  while (!digitalRead(pinGerkon)){}
+  while (digitalRead(pinGerkon)){delay(200);}
+  Serial.println("While 1");
+  while (!digitalRead(pinGerkon)){delay(200);}
+  Serial.println("While 2");
+  while (digitalRead(pinGerkon)){delay(200);}
+  Serial.println("While 3");
+  while (!digitalRead(pinGerkon)){delay(200);}
+  Serial.println("While 4");
   digitalWrite(pinKorm,HIGH);
   KormEn = true;
 }
